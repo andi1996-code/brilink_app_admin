@@ -11,6 +11,7 @@ import 'providers/dashboard_provider.dart';
 import 'providers/service_provider.dart';
 import 'providers/service_fee_provider.dart';
 import 'providers/edc_provider.dart';
+import 'providers/activation_provider.dart';
 import 'providers/bank_fee_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/report_provider.dart';
@@ -70,6 +71,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => ReportProvider(apiService: apiService),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ActivationProvider(apiService: apiService),
         ),
       ],
       child: AdaptiveTheme(

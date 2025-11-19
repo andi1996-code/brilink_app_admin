@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_color.dart';
 import '../providers/auth_provider.dart';
+import '../providers/activation_provider.dart';
 import 'login_screen.dart';
+import 'activation_screen.dart';
 import '../layout/main_layout.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -12,12 +14,40 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 1), () async {
-        // Wait for auth provider to load token from storage
+        // Wait for auth provider to load token from storage and for activation state
         final auth = Provider.of<AuthProvider>(context, listen: false);
+        final activation = Provider.of<ActivationProvider>(
+          context,
+          listen: false,
+        );
         // Poll until initialized (small timeout)
         final end = DateTime.now().add(const Duration(seconds: 3));
-        while (!auth.initialized && DateTime.now().isBefore(end)) {
+        while ((!auth.initialized || !activation.initialized) &&
+            DateTime.now().isBefore(end)) {
           await Future.delayed(const Duration(milliseconds: 100));
+        }
+
+        // If app not activated, show Activation screen first
+        if (!activation.isActivated) {
+          Navigator.of(context).pushReplacement(
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 500),
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const ActivationScreen(),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    final tween = Tween(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    ).chain(CurveTween(curve: Curves.easeInOut));
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
+                    );
+                  },
+            ),
+          );
+          return;
         }
 
         // If token exists, go to main layout, otherwise login screen
@@ -33,17 +63,17 @@ class SplashScreen extends StatelessWidget {
                   const MainLayout(),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-                final tween = Tween(
-                  begin: const Offset(1.0, 0.0),
-                  end: Offset.zero,
-                ).chain(CurveTween(curve: Curves.easeInOut));
-                final offsetAnimation = animation.drive(tween);
+                    final tween = Tween(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    ).chain(CurveTween(curve: Curves.easeInOut));
+                    final offsetAnimation = animation.drive(tween);
 
-                return SlideTransition(
-                  position: offsetAnimation,
-                  child: child,
-                );
-              },
+                    return SlideTransition(
+                      position: offsetAnimation,
+                      child: child,
+                    );
+                  },
             ),
           );
           return;
@@ -57,17 +87,17 @@ class SplashScreen extends StatelessWidget {
                 const LoginScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-              final tween = Tween(
-                begin: const Offset(1.0, 0.0),
-                end: Offset.zero,
-              ).chain(CurveTween(curve: Curves.easeInOut));
-              final offsetAnimation = animation.drive(tween);
+                  final tween = Tween(
+                    begin: const Offset(1.0, 0.0),
+                    end: Offset.zero,
+                  ).chain(CurveTween(curve: Curves.easeInOut));
+                  final offsetAnimation = animation.drive(tween);
 
-              return SlideTransition(
-                position: offsetAnimation,
-                child: child,
-              );
-            },
+                  return SlideTransition(
+                    position: offsetAnimation,
+                    child: child,
+                  );
+                },
           ),
         );
       });
