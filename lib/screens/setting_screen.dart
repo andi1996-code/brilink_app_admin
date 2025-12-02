@@ -13,9 +13,74 @@ import 'package:brilink_app_admin/screens/user_management_screen.dart';
 import 'package:brilink_app_admin/screens/agent_management_screen.dart';
 import '../widgets/custom_button.dart';
 import 'package:brilink_app_admin/providers/auth_provider.dart';
+import 'package:dio/dio.dart';
+import '../services/api_client.dart';
 
-class SettingScreen extends StatelessWidget {
+class SettingScreen extends StatefulWidget {
   const SettingScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SettingScreen> createState() => _SettingScreenState();
+}
+
+class _SettingScreenState extends State<SettingScreen> {
+  bool _isResetLoading = false;
+
+  Future<void> _resetAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Reset Saldo'),
+        content: const Text(
+          'Apakah Anda yakin ingin mereset semua data? Tindakan ini tidak dapat dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Reset', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isResetLoading = true);
+
+    try {
+      final apiService = ApiClient.instance.apiService;
+      await apiService.post('/api/edc-machines/reset-all');
+
+      if (mounted) {
+        AppNavigator.showAlert(
+          'Data berhasil direset',
+          type: AlertType.success,
+        );
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        AppNavigator.showAlert(
+          e.response?.data?['message'] ?? e.message ?? 'Gagal melakukan reset',
+          type: AlertType.error,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppNavigator.showAlert(
+          'Gagal melakukan reset: $e',
+          type: AlertType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isResetLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,54 +103,71 @@ class SettingScreen extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Consumer<AuthProvider>(
-              builder: (context, auth, _) => CustomButton(
-                text: 'Logout',
-                icon: Icons.logout,
-                onPressed: auth.isLoading
-                    ? null
-                    : () async {
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Konfirmasi Logout'),
-                            content: const Text(
-                              'Apakah Anda yakin ingin logout?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(false),
-                                child: const Text('Batal'),
+            child: Column(
+              children: [
+                CustomButton(
+                  text: 'Reset Saldo',
+                  icon: Icons.restart_alt,
+                  onPressed: _isResetLoading ? null : _resetAll,
+                  isLoading: _isResetLoading,
+                  backgroundColor: Colors.orange.shade600,
+                  textColor: Colors.white,
+                  height: 50,
+                  borderRadius: 12,
+                ),
+                const SizedBox(height: 12),
+                Consumer<AuthProvider>(
+                  builder: (context, auth, _) => CustomButton(
+                    text: 'Logout',
+                    icon: Icons.logout,
+                    onPressed: auth.isLoading
+                        ? null
+                        : () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Konfirmasi Logout'),
+                                content: const Text(
+                                  'Apakah Anda yakin ingin logout?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(false),
+                                    child: const Text('Batal'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(true),
+                                    child: const Text('Logout'),
+                                  ),
+                                ],
                               ),
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(true),
-                                child: const Text('Logout'),
-                              ),
-                            ],
-                          ),
-                        );
+                            );
 
-                        if (confirmed != true) return;
+                            if (confirmed != true) return;
 
-                        final ok = await auth.logoutFromServer();
-                        if (ok) {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => const LoginScreen(),
-                            ),
-                          );
-                        } else {
-                          AppNavigator.showAlert(
-                            auth.errorMessage ?? 'Logout gagal',
-                            type: AlertType.error,
-                          );
-                        }
-                      },
-                backgroundColor: colorScheme.error,
-                textColor: colorScheme.onError,
-                height: 50,
-                borderRadius: 12,
-              ),
+                            final ok = await auth.logoutFromServer();
+                            if (ok) {
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
+                              );
+                            } else {
+                              AppNavigator.showAlert(
+                                auth.errorMessage ?? 'Logout gagal',
+                                type: AlertType.error,
+                              );
+                            }
+                          },
+                    backgroundColor: colorScheme.error,
+                    textColor: colorScheme.onError,
+                    height: 50,
+                    borderRadius: 12,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -134,9 +216,9 @@ class SettingScreen extends StatelessWidget {
                   child: Text(
                     item.title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: colorScheme.onSurface,
-                    ),
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurface,
+                        ),
                   ),
                 ),
                 const Icon(
